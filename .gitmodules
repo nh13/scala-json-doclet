@@ -1,0 +1,3 @@
+[submodule "example/vendor/sbt-custom-doclet"]
+	path = example/vendor/sbt-custom-doclet
+	url = https://github.com/todesking/sbt-custom-doclet.git
