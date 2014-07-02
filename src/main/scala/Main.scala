@@ -37,20 +37,50 @@ class JsonDoclet extends Doclet {
 
   def publish(entity:model.Entity):Unit = {
     import Ext._
-    import Renderer._
+    import CommentRenderer._
+    import EntityEx._
+    def section[A <: model.MemberEntity](title:String, data:Seq[A])(proc:A => Unit)(implicit puts:String => Unit):Unit = {
+      val members = data.filter(_.isDefinedHere)
+      if(members.isEmpty) return
+      puts(title)
+      members.foreach(proc)
+    }
     entity match {
       case e:model.Package =>
         val fullname = e.toRoot.change(l => l.slice(0, l.size - 1)).reverse.map(_.name).mkString(".")
-        write(s"${fullname}.package") {puts =>
+        write(s"${fullname}.package") {implicit puts =>
           puts(s"# Package ${fullname}")
           commentOf(e).map(c => c.render(e.kind).foreach(puts(_)))
+          section("## Members", e.members) {member =>
+            puts(s"* ${member.name}")
+          }
         }
         e.templates.foreach(publish(_))
-      case e:model.MemberTemplateEntity =>
+      case e:model.DocTemplateEntity =>
         val fullname = e.toRoot.change(l => l.slice(0, l.size - 1)).reverse.map(_.name).mkString(".")
-        write(s"${fullname}.${e.kind}") {puts =>
+        write(s"${fullname}.${e.kind}") {implicit puts =>
           puts(s"# ${e.kind} ${fullname}")
+          puts("")
           commentOf(e).map(c => c.render(e.kind).foreach(puts(_)))
+
+          section("## Methods", e.methods) {m =>
+            puts("")
+            puts(s"### ${m.name} ${m.typeParams} ${m.valueParams}: ${m.resultType}")
+            puts("")
+            commentOf(m).map(c => c.render(m.kind).foreach(puts(_)))
+          }
+
+          section("## values", e.values) {m =>
+            puts("")
+            puts(s"### ${m.name}: ${m.resultType}")
+            puts("")
+            commentOf(m).map(c => c.render(m.kind).foreach(puts(_)))
+          }
+
+          section("## type aliases", e.aliasTypes) {m =>
+            puts("")
+            puts(s"### ${m.name} = ${m.alias}")
+          }
         }
       case x@_ => println(s"Skip unsupported model: ${x}")
     }
@@ -59,9 +89,17 @@ class JsonDoclet extends Doclet {
   def commentOf(entity:model.Entity) = entity match { case e:model.MemberEntity => e.comment case _ => None }
 }
 
-object Renderer {
+object EntityEx {
+  import model._
+  implicit class MemberEntity_(val self:MemberEntity) {
+    def isDefinedHere():Boolean =
+      self.inDefinitionTemplates.head == self.inTemplate
+  }
+}
+
+object CommentRenderer {
   import comment._
-  implicit class CommentRenderer(val self:Comment) extends AnyVal {
+  implicit class CommentRenderer_(val self:Comment) extends AnyVal {
     def render(kind:String):Seq[String] = {
       kind match {
         case _ => self.body.blocks.flatMap(_.render)
