@@ -1,8 +1,8 @@
 trait TypeRepository {
-  def findType(id:EntityId[Kind.Type.type]):Option[Type]
+  def findType(id:EntityId.Type):Option[Type]
 }
 trait ObjektRepository {
-  def findObjekt(id:EntityId[Kind.Objekt.type]):Option[Objekt]
+  def findObjekt(id:EntityId.Objekt):Option[Objekt]
 }
 trait PackageRepository {
   def memberPackages(qualifiedName:String):Seq[Package]
@@ -39,6 +39,15 @@ object Kind {
 
 abstract class EntityId[K <: Kind] {
   def representation:String
+}
+object EntityId {
+  type Type = EntityId[_ <: Kind.Type.type]
+  type Objekt = EntityId[_ <: Kind.Objekt.type]
+  object bound {
+    type Package = BoundEntityId[_ <: Kind.Package.type]
+    type Method = BoundEntityId[_ <: Kind.Method.type]
+    type Container = BoundEntityId[_ <: Kind.ContainerKind]
+  }
 }
 case class BoundEntityId[K <: Kind](moduleId:ModuleId, entityId:UnboundEntityId[K]) extends EntityId[K] {
   override def representation = s"${moduleId.representation}:${entityId.representation}"
@@ -78,14 +87,14 @@ abstract class ContainerEntity extends Entity {
 
 abstract class Package extends ContainerEntity {
   override def kind = Kind.Package
-  override def id:BoundEntityId[Kind.Package.type]
+  override def id:EntityId.bound.Package
   def moduleId:ModuleId
+  def subPackages:Seq[SubPackage] = ???
 }
 
-case class SubPackage(parentId:BoundEntityId[Kind.Package.type], override val name:String) extends Package {
+case class SubPackage(parentId:EntityId.bound.Package, override val name:String) extends Package {
   override def moduleId = parentId.moduleId
-  override def id:BoundEntityId[Kind.Package.type] = parentId.memberId(kind, name)
-  def packages:Seq[Package] = ???
+  override def id:EntityId.bound.Package = parentId.memberId(kind, name)
 }
 
 case class RootPackage(override val moduleId:ModuleId) extends Package {
@@ -94,13 +103,13 @@ case class RootPackage(override val moduleId:ModuleId) extends Package {
 }
 
 // TODO: self type annotation
-case class Type(namespace:BoundEntityId[_ <: Kind.ContainerKind], override val name:String, val inherits:Seq[TypeRef]) extends ContainerEntity {
+case class Type(namespace:EntityId.bound.Container, override val name:String, val inherits:Seq[TypeRef]) extends ContainerEntity {
   override def id = namespace.memberId(Kind.Type, name)
   override val kind = Kind.Type
   def companion(implicit repo:ObjektRepository):Option[Objekt] = repo.findObjekt(id.change(kind = Kind.Objekt))
 }
 
-case class Objekt(namespace:BoundEntityId[_ <: Kind.ContainerKind], override val name:String, val inherits:Seq[TypeRef]) extends ContainerEntity {
+case class Objekt(namespace:EntityId.bound.Container, override val name:String, val inherits:Seq[TypeRef]) extends ContainerEntity {
   override val id = namespace.memberId(Kind.Objekt, name)
   override val kind = Kind.Objekt
   def companion(implicit repo:TypeRepository):Option[Type] = repo.findType(id.change(kind = Kind.Type))
@@ -108,7 +117,7 @@ case class Objekt(namespace:BoundEntityId[_ <: Kind.ContainerKind], override val
 
 case class TypeAlias(val qualifiedName:String, val params:TypeParams, val ref:TypeRef)
 
-case class TypeRef(ref:EntityId[Kind.Type.type], args:TypeArgs) {
+case class TypeRef(ref:EntityId.Type, args:TypeArgs) {
   def tpe(implicit repo:TypeRepository):Option[Type] = repo.findType(ref)
 }
 
@@ -118,17 +127,17 @@ case class TypeParams(representation:String)
 case class ValueParams(representation:String)
 
 abstract class Method extends Entity {
-  def namespace:BoundEntityId[_ <: Kind.ContainerKind]
+  def namespace:EntityId.bound.Container
   def typeParams:TypeParams
   def valueParams:ValueParams
   def retType:TypeRef
 
   override val kind = Kind.Method
-  override def id:BoundEntityId[Kind.Method.type] = namespace.memberId(kind, name)
+  override def id:EntityId.bound.Method = namespace.memberId(kind, name)
 }
 
 case class Def(
-  override val namespace:BoundEntityId[_ <: Kind.ContainerKind],
+  override val namespace:EntityId.bound.Container,
   override val name:String,
   override val typeParams:TypeParams,
   override val valueParams:ValueParams,
@@ -137,7 +146,7 @@ case class Def(
 }
 
 case class Val(
-  override val namespace:BoundEntityId[_ <: Kind.ContainerKind],
+  override val namespace:EntityId.bound.Container,
   override val name:String,
   override val retType:TypeRef
 ) extends Method {
@@ -146,7 +155,7 @@ case class Val(
 }
 
 case class Var(
-  override val namespace:BoundEntityId[_ <: Kind.ContainerKind],
+  override val namespace:EntityId.bound.Container,
   override val name:String,
   override val retType:TypeRef
 ) extends Method {
