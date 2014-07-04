@@ -117,8 +117,39 @@ case class TypeArgs(representation:String)
 case class TypeParams(representation:String)
 case class ValueParams(representation:String)
 
-abstract class Method(name:String, typeParams:TypeParams, valueParams:ValueParams, tpe:TypeRef)
-case class Def(name:String, typeParams:TypeParams, valueParams:ValueParams, tpe:TypeRef) extends Method(name, typeParams, valueParams, tpe)
-case class Val(name:String, tpe:TypeRef) extends Method(name, TypeParams(""), ValueParams(""), tpe)
-case class Var(name:String, tpe:TypeRef) extends Method(name, TypeParams(""), ValueParams(""), tpe)
+abstract class Method extends Entity {
+  def namespace:BoundEntityId[_ <: Kind.ContainerKind]
+  def typeParams:TypeParams
+  def valueParams:ValueParams
+  def retType:TypeRef
 
+  override val kind = Kind.Method
+  override def id:BoundEntityId[Kind.Method.type] = namespace.memberId(kind, name)
+}
+
+case class Def(
+  override val namespace:BoundEntityId[_ <: Kind.ContainerKind],
+  override val name:String,
+  override val typeParams:TypeParams,
+  override val valueParams:ValueParams,
+  override val retType:TypeRef
+) extends Method {
+}
+
+case class Val(
+  override val namespace:BoundEntityId[_ <: Kind.ContainerKind],
+  override val name:String,
+  override val retType:TypeRef
+) extends Method {
+  override def typeParams = TypeParams("")
+  override def valueParams = ValueParams("")
+}
+
+case class Var(
+  override val namespace:BoundEntityId[_ <: Kind.ContainerKind],
+  override val name:String,
+  override val retType:TypeRef
+) extends Method {
+  override def typeParams = TypeParams("")
+  override def valueParams = ValueParams("")
+}
