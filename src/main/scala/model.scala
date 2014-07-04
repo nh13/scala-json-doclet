@@ -29,11 +29,12 @@ sealed abstract class Kind(val name:String) {
   override def toString = name
 }
 object Kind {
-  object Package   extends Kind("package")
-  object Type      extends Kind("type")
+  abstract class ContainerKind(name:String) extends Kind(name)
+  object Package   extends ContainerKind("package")
+  object Type      extends ContainerKind("type")
   object TypeAlias extends Kind("type_alias")
   object Method    extends Kind("method")
-  object Objekt    extends Kind("objekt")
+  object Objekt    extends ContainerKind("objekt")
 }
 
 abstract class EntityId[K <: Kind] {
@@ -81,9 +82,9 @@ abstract class Package extends ContainerEntity {
   def moduleId:ModuleId
 }
 
-case class SubPackage(parent:Package, override val name:String) extends Package {
-  override def moduleId = parent.moduleId
-  override def id:BoundEntityId[Kind.Package.type] = parent.id.memberId(kind, name)
+case class SubPackage(parentId:BoundEntityId[Kind.Package.type], override val name:String) extends Package {
+  override def moduleId = parentId.moduleId
+  override def id:BoundEntityId[Kind.Package.type] = parentId.memberId(kind, name)
   def packages:Seq[Package] = ???
 }
 
@@ -93,13 +94,13 @@ case class RootPackage(override val moduleId:ModuleId) extends Package {
 }
 
 // TODO: self type annotation
-case class Type(namespace:BoundEntityId[_ <: Kind], override val name:String, val inherits:Seq[TypeRef]) extends ContainerEntity {
+case class Type(namespace:BoundEntityId[_ <: Kind.ContainerKind], override val name:String, val inherits:Seq[TypeRef]) extends ContainerEntity {
   override def id = namespace.memberId(Kind.Type, name)
   override val kind = Kind.Type
   def companion(implicit repo:ObjektRepository):Option[Objekt] = repo.findObjekt(id.change(kind = Kind.Objekt))
 }
 
-case class Objekt(namespace:BoundEntityId[_ <: Kind], override val name:String, val inherits:Seq[TypeRef]) extends ContainerEntity {
+case class Objekt(namespace:BoundEntityId[_ <: Kind.ContainerKind], override val name:String, val inherits:Seq[TypeRef]) extends ContainerEntity {
   override val id = namespace.memberId(Kind.Objekt, name)
   override val kind = Kind.Objekt
   def companion(implicit repo:TypeRepository):Option[Type] = repo.findType(id.change(kind = Kind.Type))
