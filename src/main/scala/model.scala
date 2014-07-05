@@ -16,19 +16,19 @@ sealed abstract class Kind[A](val name:String) {
 }
 object Kind {
   abstract class ContainerKind[A](name:String) extends Kind[A](name)
-  object Package   extends ContainerKind[Package]("package")
-  object Type      extends ContainerKind[Type]("type")
-  object TypeAlias extends Kind[TypeAlias]("type_alias")
-  object Method    extends Kind[Method]("method")
-  object Objekt    extends ContainerKind[Objekt]("objekt")
+  object Package   extends ContainerKind [Package]   ("package")
+  object Type      extends ContainerKind [Type]      ("type")
+  object TypeAlias extends Kind          [TypeAlias] ("type_alias")
+  object Method    extends Kind          [Method]    ("method")
+  object Objekt    extends ContainerKind [Objekt]    ("objekt")
 }
 
 object EntityId {
-  type Type = EntityId[_ <: Kind.Type.type]
+  type Type   = EntityId[_ <: Kind.Type.type]
   type Objekt = EntityId[_ <: Kind.Objekt.type]
   object bound {
-    type Package = BoundEntityId[_ <: Kind.Package.type]
-    type Method = BoundEntityId[_ <: Kind.Method.type]
+    type Package   = BoundEntityId[_ <: Kind.Package.type]
+    type Method    = BoundEntityId[_ <: Kind.Method.type]
     type Container = BoundEntityId[_ <: Kind.ContainerKind[_]]
   }
 }
