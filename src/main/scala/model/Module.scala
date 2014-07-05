@@ -1,4 +1,4 @@
-package com.todesking.doclet
+package com.todesking.scala_models
 
 case class ModuleId(representation:String)
 abstract class Module {

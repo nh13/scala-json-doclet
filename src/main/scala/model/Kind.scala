@@ -1,4 +1,4 @@
-package com.todesking.doclet
+package com.todesking.scala_models
 
 sealed abstract class Kind[A](val name:String) {
   type EntityType = A

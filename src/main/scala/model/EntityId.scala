@@ -1,4 +1,4 @@
-package com.todesking.doclet
+package com.todesking.scala_models
 
 object EntityId {
   type Type   = EntityId[_ <: Kind.Type.type]

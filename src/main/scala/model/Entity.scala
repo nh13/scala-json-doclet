@@ -1,4 +1,4 @@
-package com.todesking.doclet
+package com.todesking.scala_models
 
 abstract sealed class Entity {
   def kind:Kind[_]

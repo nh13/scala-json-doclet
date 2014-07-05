@@ -5,6 +5,8 @@ import java.io.{File => JFile }
 import scala.tools.nsc.doc.model
 import scala.tools.nsc.doc.base.comment
 
+import com.todesking.scala_models._
+
 object Ext {
   implicit class Tapper[A](self:A) {
     def change[B](proc:A => B):B = proc(self)
