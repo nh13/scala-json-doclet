@@ -1,77 +1,64 @@
-trait TypeRepository {
-  def findType(id:EntityId.Type):Option[Type]
-}
-trait ObjektRepository {
-  def findObjekt(id:EntityId.Objekt):Option[Objekt]
-}
-trait PackageRepository {
-  def memberPackages(qualifiedName:String):Seq[Package]
-  def memberTypes(qualifiedName:String):Seq[Type]
-  def memberMethods(qualifiedName:String):Seq[Method]
-}
-
 abstract class Module {
   def id:ModuleId
   def root:RootPackage
   // TODO: tree structure
 
-  object repo {
-    val packages:PackageRepository = ???
-    val objects:ObjektRepository = ???
-    val types:TypeRepository = ???
-  }
+  val repo:Repository
 }
 
 trait Repository {
+  def find[T](id:EntityId[_ <: Kind[T]]):Option[T] = ???
 }
 
-sealed abstract class Kind(val name:String) {
+sealed abstract class Kind[A](val name:String) {
+  type EntityType = A
   override def toString = name
 }
 object Kind {
-  abstract class ContainerKind(name:String) extends Kind(name)
-  object Package   extends ContainerKind("package")
-  object Type      extends ContainerKind("type")
-  object TypeAlias extends Kind("type_alias")
-  object Method    extends Kind("method")
-  object Objekt    extends ContainerKind("objekt")
+  abstract class ContainerKind[A](name:String) extends Kind[A](name)
+  object Package   extends ContainerKind[Package]("package")
+  object Type      extends ContainerKind[Type]("type")
+  object TypeAlias extends Kind[TypeAlias]("type_alias")
+  object Method    extends Kind[Method]("method")
+  object Objekt    extends ContainerKind[Objekt]("objekt")
 }
 
-abstract class EntityId[K <: Kind] {
-  def representation:String
-}
 object EntityId {
   type Type = EntityId[_ <: Kind.Type.type]
   type Objekt = EntityId[_ <: Kind.Objekt.type]
   object bound {
     type Package = BoundEntityId[_ <: Kind.Package.type]
     type Method = BoundEntityId[_ <: Kind.Method.type]
-    type Container = BoundEntityId[_ <: Kind.ContainerKind]
+    type Container = BoundEntityId[_ <: Kind.ContainerKind[_]]
   }
 }
-case class BoundEntityId[K <: Kind](moduleId:ModuleId, entityId:UnboundEntityId[K]) extends EntityId[K] {
-  override def representation = s"${moduleId.representation}:${entityId.representation}"
-  def memberId[K2 <: Kind](kind:K2, name:String):BoundEntityId[K2] = BoundEntityId(moduleId, entityId.memberId(kind, name))
-  def change[K2 <: Kind](kind:K2) = BoundEntityId[K2](moduleId, entityId.change(kind = kind))
-}
-abstract class UnboundEntityId[K <: Kind] extends EntityId[K] {
+abstract class EntityId[K <: Kind[_]] {
   def kind:K
-  def memberId[K2 <: Kind](kind:K2, name:String) = MemberUnboundEntityId(this, kind, name)
-  def change[K2 <: Kind](kind:K2):UnboundEntityId[K2]
+  def representation:String
 }
-case class RootUnboundEntityId[K <: Kind](override val kind:K) extends UnboundEntityId[K] {
+case class BoundEntityId[K <: Kind[_]](moduleId:ModuleId, entityId:UnboundEntityId[K]) extends EntityId[K] {
+  override def representation = s"${moduleId.representation}:${entityId.representation}"
+  override def kind:K = entityId.kind
+  def memberId[K2 <: Kind[_]](kind:K2, name:String):BoundEntityId[K2] = BoundEntityId(moduleId, entityId.memberId(kind, name))
+  def change[K2 <: Kind[_]](kind:K2) = BoundEntityId[K2](moduleId, entityId.change(kind = kind))
+}
+abstract class UnboundEntityId[K <: Kind[_]] extends EntityId[K] {
+  def memberId[K2 <: Kind[_]](kind:K2, name:String) = MemberUnboundEntityId(this, kind, name)
+  def change[K2 <: Kind[_]](kind:K2):UnboundEntityId[K2]
+}
+case class RootUnboundEntityId[K <: Kind[_]](override val kind:K) extends UnboundEntityId[K] {
   override def representation:String = s".@${kind}"
-  override def change[K2 <: Kind](kind:K2) = RootUnboundEntityId(kind)
+  override def change[K2 <: Kind[_]](kind:K2) = RootUnboundEntityId[K2](kind)
 }
-case class MemberUnboundEntityId[K <: Kind, N <: Kind](namespace:UnboundEntityId[N], override val kind:K, name:String) extends UnboundEntityId[K] {
+case class MemberUnboundEntityId[K <: Kind[_], N <: Kind[_]](namespace:UnboundEntityId[N], override val kind:K, name:String) extends UnboundEntityId[K] {
   override def representation:String = s"${namespace.representation}.${name}@${kind}"
-  override def change[K2 <: Kind](kind:K2) = MemberUnboundEntityId(namespace, kind, name)
+  override def change[K2 <: Kind[_]](kind:K2) = MemberUnboundEntityId[K2, N](namespace, kind, name)
 }
 
 case class ModuleId(representation:String)
 
 abstract sealed class Entity {
-  def kind:Kind
+  def kind:Kind[_]
   def name:String
   def id:BoundEntityId[_]
   def representation:String = ??? // TODO: be abstract
@@ -80,7 +67,7 @@ abstract sealed class Entity {
 /** Entity that contains types, methods, type aliases, or objects */
 abstract class ContainerEntity extends Entity {
   // TODO: be abstract
-  def memberTypes(implicit repo:TypeRepository):Seq[Type] = ???
+  def memberTypes(implicit repo:Repository):Seq[Type] = ???
   // TODO: be abstract
   def memberMethods:Seq[Method] = ???
 }
@@ -106,19 +93,19 @@ case class RootPackage(override val moduleId:ModuleId) extends Package {
 case class Type(namespace:EntityId.bound.Container, override val name:String, val inherits:Seq[TypeRef]) extends ContainerEntity {
   override def id = namespace.memberId(Kind.Type, name)
   override val kind = Kind.Type
-  def companion(implicit repo:ObjektRepository):Option[Objekt] = repo.findObjekt(id.change(kind = Kind.Objekt))
+  def companion(implicit repo:Repository):Option[Objekt] = repo.find[Objekt](id.change(kind = Kind.Objekt))
 }
 
 case class Objekt(namespace:EntityId.bound.Container, override val name:String, val inherits:Seq[TypeRef]) extends ContainerEntity {
   override val id = namespace.memberId(Kind.Objekt, name)
   override val kind = Kind.Objekt
-  def companion(implicit repo:TypeRepository):Option[Type] = repo.findType(id.change(kind = Kind.Type))
+  def companion(implicit repo:Repository):Option[Type] = repo.find[Type](id.change(kind = Kind.Type))
 }
 
 case class TypeAlias(val qualifiedName:String, val params:TypeParams, val ref:TypeRef)
 
 case class TypeRef(ref:EntityId.Type, args:TypeArgs) {
-  def tpe(implicit repo:TypeRepository):Option[Type] = repo.findType(ref)
+  def tpe(implicit repo:Repository):Option[Type] = repo.find[Type](ref)
 }
 
 case class TypeArgs(representation:String)
