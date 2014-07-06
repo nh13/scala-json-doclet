@@ -1,10 +1,13 @@
 package com.todesking.scala_models
 
 case class ModuleId(representation:String)
-abstract class Module {
-  def id:ModuleId
-  def root:RootPackage
-  // TODO: tree structure
+class Module(val id:ModuleId, val repository:Repository) {
+  object Implicit {
+    implicit val repository = Module.this.repository
+  }
+  def rootPackage:Package = RootPackage(id)
+}
 
-  val repo:Repository
+object ModuleId {
+  def temporal() = ModuleId("com.todesking.scala_models:_temporal_:0.0.0")
 }

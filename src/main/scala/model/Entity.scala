@@ -1,9 +1,9 @@
 package com.todesking.scala_models
 
 abstract sealed class Entity {
-  def kind:Kind[_]
+  def kind:Kind[_ <: Entity]
   def name:String
-  def id:BoundEntityId[_]
+  def id:BoundEntityId[_ <: Kind[_]]
   def representation:String = ??? // TODO: be abstract
 }
 
@@ -12,7 +12,7 @@ abstract class ContainerEntity extends Entity {
   // TODO: be abstract
   def memberTypes(implicit repo:Repository):Seq[Type] = ???
   // TODO: be abstract
-  def memberMethods:Seq[Method] = ???
+  def methods(implicit repo:Repository):Seq[Method] = repo.findMembers[Method](id, Kind.Method)
 }
 
 abstract class Package extends ContainerEntity {
@@ -45,7 +45,10 @@ case class Objekt(namespace:EntityId.bound.Container, override val name:String, 
   def companion(implicit repo:Repository):Option[Type] = repo.find[Type](id.change(kind = Kind.Type))
 }
 
-case class TypeAlias(val qualifiedName:String, val params:TypeParams, val ref:TypeRef)
+case class TypeAlias(namespace:EntityId.bound.Container, override val name:String, val params:TypeParams, val ref:TypeRef) extends Entity {
+  override def id = namespace.memberId(Kind.TypeAlias, name)
+  override def kind = Kind.TypeAlias
+}
 
 case class TypeRef(ref:EntityId.Type, args:TypeArgs) {
   def tpe(implicit repo:Repository):Option[Type] = repo.find[Type](ref)

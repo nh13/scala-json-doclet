@@ -32,12 +32,26 @@ trait Doclet extends Generator with Universer with Indexer {
 
 
 class JsonDoclet extends Doclet {
-  import scala.tools.nsc.doc.model._
   override def generateImpl():Unit = {
-    root.members.foreach(publish(_))
+    val moduleId = ModuleId.temporal()
+    val analyzer:DocAnalyzer = new DocAnalyzer(moduleId)
+    val module = analyzer.analyze(root)
+    // printModule(module)
+    // root.members.foreach(publish(_))
+  }
+
+  def printModule(module:Module):Unit = {
+    import module.Implicit._
+
+    printPackage(module.rootPackage)
+  }
+
+  def printPackage(pkg:Package)(implicit repo:Repository):Unit = {
+    pkg.methods.foreach(m => println(m.representation))
   }
 
   def publish(entity:model.Entity):Unit = {
+    import scala.tools.nsc.doc.model._
     import Ext._
     import CommentRenderer._
     import EntityEx._

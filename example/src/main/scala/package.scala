@@ -4,5 +4,9 @@ package com.todesking
 package object example {
   /** this method is package global **/
   def foo() = 100
+
+  def foo(a:Int, b:String):Map[Int, Seq[String]] = ???
+
+  def bar:this.type = ???
 }
 
