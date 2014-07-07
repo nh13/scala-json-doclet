@@ -24,6 +24,7 @@ object EntityId {
 abstract class EntityId[K <: Kind[_]] {
   def kind:K
   def representation:String
+  override def toString = representation
 }
 case class BoundEntityId[K <: Kind[_]](moduleId:ModuleId, unbound:UnboundEntityId[K]) extends EntityId[K] {
   override def representation = s"${moduleId.representation}:${unbound.representation}"

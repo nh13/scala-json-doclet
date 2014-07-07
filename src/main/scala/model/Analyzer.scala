@@ -47,7 +47,6 @@ class DocAnalyzer(moduleId:ModuleId) {
         EntityId.unbound.unknown(name.split("\\.")).change(Kind.Type)
     }
 
-    println(s"$te ${te.name} ${te.refEntity}")
     val baseType:EntityId.Type = resolveLinkTo(te.refEntity.values.head._1)
 
     TypeRef(baseType, TypeArgs("[...]"))
