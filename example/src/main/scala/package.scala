@@ -8,5 +8,16 @@ package object example {
   def foo(a:Int, b:String):Map[Int, Seq[String]] = ???
 
   def bar:this.type = ???
+
+  def baz:A#C = ???
+
+  def bax:A.O = ???
 }
 
+class A {
+  type C = String
+}
+
+object A {
+  type O = Int
+}
