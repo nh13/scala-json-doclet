@@ -35,8 +35,8 @@ class DocAnalyzer(moduleId:ModuleId) {
 
   def mkTypeRef(repo:ModuleRepository, te:model.TypeEntity):TypeRef = {
     def resolveLinkTo(linkTo:base.LinkTo):EntityId.Type = linkTo match {
-      case base.LinkToMember(mbr, tpl) =>
-        throw new RuntimeException(s"Unsupported LinkTo type: ${linkTo}")
+      case base.LinkToMember(mbr:model.TemplateEntity, tpl) =>
+        EntityId.unbound.unknown(mbr.qualifiedName.split("\\.")).change(Kind.Type)
       case base.LinkToTpl(tpl:model.DocTemplateEntity) =>
         EntityId.unbound.unknown(tpl.name.split("\\.")).change(Kind.Type)
       case base.LinkToTpl(tpl) =>
